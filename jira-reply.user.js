@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JIRA reply script
 // @namespace    http://tampermonkey.net/
-// @version      2025-05-29
+// @version      1.0
 // @description  User script to make easy reply to issue in JIRA
 // @author       Pavel Alexeev <Pahan@Hubbitus.info>
 // @include      *jira*/*
