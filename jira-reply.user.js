@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JIRA reply script
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  User script to make easy reply to issue in JIRA
 // @author       Pavel Alexeev <Pahan@Hubbitus.info>
 // @include      *jira*/*
@@ -16,8 +16,8 @@
 
 	console.log('Hello from hubbitus jira reply');
 
-// May bee needed to import jQuery if run (debug) outside JIRA:
-//	await import ('https://code.jquery.com/jquery-3.7.1.min.js');
+// DEBUG: May be needed to import jQuery if run (debug) outside JIRA:
+//  await import ('https://code.jquery.com/jquery-3.7.1.min.js');
 
 	const popup = $('<div id="jira-reply-tooltip"><img src="https://cdn.statically.io/gh/Hubbitus/static/main/images/icons/reply-icon.32px.png" alt="Reply to"/>Reply</div>');
 	$(document.head).append(`
@@ -35,6 +35,7 @@
 				border-radius: 4px;
 				font-size: 90%;
 				cursor: pointer;
+				z-index: 10000;
 			}
 			#jira-reply-tooltip img {
 				width: 16px;
@@ -109,27 +110,54 @@ function handleSelection(selection, popup){
 		*/
 		let rects = range.getClientRects()
 		let pos = rects[rects.length - 1]; // last rect is selected text
-		popup.replyingTo = selection.focusNode;
-		popup.replyText = `${selection}`;
-		popup.css("left", `${window.scrollX + pos.left + pos.width}px`);
-		popup.css("top", `${window.scrollY + pos.top - 25}px`);
-		popup.css("display", 'block');
+		if (pos){
+			popup.replyingTo = selection.focusNode;
+			popup.replyText = `${selection}`;
+			popup.css("left", `${window.scrollX + pos.left + pos.width}px`);
+			popup.css("top", `${window.scrollY + pos.top - 25}px`);
+			popup.css("display", 'block');
+		}
 	}
 }
 
 function handleReply(replyNode, replyText){
-	console.log('replyNode:', replyNode);
-	console.log('replyNode.parentElement:', replyNode.parentElement);
-	let comment = $(replyNode.parentElement).closest('.activity-comment')
-	let userName = comment.find('.action-details .user-hover').attr('rel');
-	let commentLink = comment.find('.action-details a[class*=commentdate]').attr('href');
-	let replyCommentDate = comment.find('.action-details span.user-tz').attr('title');
+	// console.log('replyNode:', replyNode);
+	// console.log('replyNode.parentElement:', replyNode.parentElement);
+	let textarea = $('textarea#comment')
+	let element = $(replyNode.parentElement);
 
-	console.log('textarea text:', $('textarea#comment').text());
+	let comment = element.closest('.activity-comment')
+	if (comment.length){
+		let userName = comment.find('.action-details .user-hover').attr('rel');
+		let commentLink = comment.find('.action-details a[class*=commentdate]').attr('href');
+		let replyCommentDate = comment.find('.action-details span.user-tz').attr('title');
 
-	$('textarea#comment').val(($('textarea#comment').val() + `
+		// console.log('comment:', comment);
+
+		textarea.val((textarea.val() + `
 [~${userName}], в ответ на [комментарий|/${commentLink}] от ${replyCommentDate}:
 {quote}${replyText}{quote}
 `).trimStart()
-	);
+		);
+
+	}
+	else { // Description and details modules:
+		let description = element.closest('#description-val')
+		let title;
+		if(description.length) { // Description
+			title = description.closest('.module').find('.mod-header').text();
+		}
+		else {
+			let details = element.closest('#details-module');
+			if (details.length) { // Details module
+				let item = element.closest('.item');
+				title = item.find('.name').attr('title');
+			}
+		}
+		textarea.val((textarea.val() + `
+В ответ на \{\{${title}\}\}:
+{quote}${replyText}{quote}
+@`).trimStart()
+		);
+	}
 }
